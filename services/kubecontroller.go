@@ -11,8 +11,8 @@ import (
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 )
 
-func runKubeController(ctx context.Context, host *hosts.Host, kubeControllerService v3.KubeControllerService, authorizationMode string, df hosts.DialerFactory) error {
-	imageCfg, hostCfg := buildKubeControllerConfig(kubeControllerService, authorizationMode)
+func runKubeController(ctx context.Context, host *hosts.Host, kubeControllerService v3.KubeControllerService, authorizationMode string, cloudProvider string, df hosts.DialerFactory) error {
+	imageCfg, hostCfg := buildKubeControllerConfig(kubeControllerService, authorizationMode, cloudProvider)
 	if err := docker.DoRunContainer(ctx, host.DClient, imageCfg, hostCfg, KubeControllerContainerName, host.Address, ControlRole); err != nil {
 		return err
 	}
@@ -23,13 +23,13 @@ func removeKubeController(ctx context.Context, host *hosts.Host) error {
 	return docker.DoRemoveContainer(ctx, host.DClient, KubeControllerContainerName, host.Address)
 }
 
-func buildKubeControllerConfig(kubeControllerService v3.KubeControllerService, authorizationMode string) (*container.Config, *container.HostConfig) {
+func buildKubeControllerConfig(kubeControllerService v3.KubeControllerService, authorizationMode string, cloudProvider string) (*container.Config, *container.HostConfig) {
 	imageCfg := &container.Config{
 		Image: kubeControllerService.Image,
 		Entrypoint: []string{"/opt/rke/entrypoint.sh",
 			"kube-controller-manager",
 			"--address=0.0.0.0",
-			"--cloud-provider=",
+			"--cloud-provider=" + cloudProvider,
 			"--leader-elect=true",
 			"--kubeconfig=" + pki.KubeControllerConfigPath,
 			"--enable-hostpath-provisioner=false",

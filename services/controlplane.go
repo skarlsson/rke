@@ -8,7 +8,7 @@ import (
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 )
 
-func RunControlPlane(ctx context.Context, controlHosts, etcdHosts []*hosts.Host, controlServices v3.RKEConfigServices, sidekickImage, authorizationMode string, localConnDialerFactory hosts.DialerFactory) error {
+func RunControlPlane(ctx context.Context, controlHosts, etcdHosts []*hosts.Host, controlServices v3.RKEConfigServices, sidekickImage, authorizationMode string, cloudProvider string, localConnDialerFactory hosts.DialerFactory) error {
 	log.Infof(ctx, "[%s] Building up Controller Plane..", ControlRole)
 	for _, host := range controlHosts {
 
@@ -22,12 +22,12 @@ func RunControlPlane(ctx context.Context, controlHosts, etcdHosts []*hosts.Host,
 			return err
 		}
 		// run kubeapi
-		err := runKubeAPI(ctx, host, etcdHosts, controlServices.KubeAPI, authorizationMode, localConnDialerFactory)
+		err := runKubeAPI(ctx, host, etcdHosts, controlServices.KubeAPI, authorizationMode, cloudProvider, localConnDialerFactory)
 		if err != nil {
 			return err
 		}
 		// run kubecontroller
-		err = runKubeController(ctx, host, controlServices.KubeController, authorizationMode, localConnDialerFactory)
+		err = runKubeController(ctx, host, controlServices.KubeController, authorizationMode, cloudProvider, localConnDialerFactory)
 		if err != nil {
 			return err
 		}

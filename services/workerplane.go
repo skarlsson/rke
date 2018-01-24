@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func RunWorkerPlane(ctx context.Context, controlHosts, workerHosts, etcdHosts []*hosts.Host, workerServices v3.RKEConfigServices, nginxProxyImage, sidekickImage string, localConnDialerFactory hosts.DialerFactory) error {
+func RunWorkerPlane(ctx context.Context, controlHosts, workerHosts, etcdHosts []*hosts.Host, workerServices v3.RKEConfigServices, nginxProxyImage, sidekickImage string, cloudProvider string, localConnDialerFactory hosts.DialerFactory) error {
 	log.Infof(ctx, "[%s] Building up Worker Plane..", WorkerRole)
 	var errgrp errgroup.Group
 
@@ -17,7 +17,7 @@ func RunWorkerPlane(ctx context.Context, controlHosts, workerHosts, etcdHosts []
 	for _, host := range etcdHosts {
 		etcdHost := host
 		errgrp.Go(func() error {
-			return doDeployWorkerPlane(ctx, etcdHost, workerServices, nginxProxyImage, sidekickImage, localConnDialerFactory, controlHosts, true)
+			return doDeployWorkerPlane(ctx, etcdHost, workerServices, nginxProxyImage, sidekickImage, cloudProvider, localConnDialerFactory, controlHosts, true)
 		})
 	}
 	if err := errgrp.Wait(); err != nil {
@@ -28,7 +28,7 @@ func RunWorkerPlane(ctx context.Context, controlHosts, workerHosts, etcdHosts []
 	for _, host := range controlHosts {
 		controlHost := host
 		errgrp.Go(func() error {
-			return doDeployWorkerPlane(ctx, controlHost, workerServices, nginxProxyImage, sidekickImage, localConnDialerFactory, controlHosts, false)
+			return doDeployWorkerPlane(ctx, controlHost, workerServices, nginxProxyImage, sidekickImage, cloudProvider, localConnDialerFactory, controlHosts, false)
 		})
 	}
 	if err := errgrp.Wait(); err != nil {
@@ -38,7 +38,7 @@ func RunWorkerPlane(ctx context.Context, controlHosts, workerHosts, etcdHosts []
 	for _, host := range workerHosts {
 		workerHost := host
 		errgrp.Go(func() error {
-			return doDeployWorkerPlane(ctx, workerHost, workerServices, nginxProxyImage, sidekickImage, localConnDialerFactory, controlHosts, false)
+			return doDeployWorkerPlane(ctx, workerHost, workerServices, nginxProxyImage, sidekickImage, cloudProvider, localConnDialerFactory, controlHosts, false)
 		})
 	}
 	if err := errgrp.Wait(); err != nil {
@@ -78,6 +78,7 @@ func RemoveWorkerPlane(ctx context.Context, workerHosts []*hosts.Host, force boo
 func doDeployWorkerPlane(ctx context.Context, host *hosts.Host,
 	workerServices v3.RKEConfigServices,
 	nginxProxyImage, sidekickImage string,
+	cloudProvider string,
 	localConnDialerFactory hosts.DialerFactory,
 	controlHosts []*hosts.Host,
 	unschedulable bool) error {
@@ -101,7 +102,7 @@ func doDeployWorkerPlane(ctx context.Context, host *hosts.Host,
 		return err
 	}
 	// run kubelet
-	if err := runKubelet(ctx, host, workerServices.Kubelet, localConnDialerFactory, unschedulable); err != nil {
+	if err := runKubelet(ctx, host, workerServices.Kubelet, cloudProvider, localConnDialerFactory, unschedulable); err != nil {
 		return err
 	}
 	return runKubeproxy(ctx, host, workerServices.Kubeproxy, localConnDialerFactory)

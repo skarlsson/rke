@@ -33,6 +33,7 @@ type Cluster struct {
 	ClusterDomain                    string
 	ClusterCIDR                      string
 	ClusterDNSServer                 string
+	CloudProvider                    string
 	DockerDialerFactory              hosts.DialerFactory
 	LocalConnDialerFactory           hosts.DialerFactory
 }
@@ -68,6 +69,7 @@ func (c *Cluster) DeployControlPlane(ctx context.Context) error {
 		c.Services,
 		c.SystemImages[ServiceSidekickImage],
 		c.Authorization.Mode,
+		c.CloudProvider,
 		c.LocalConnDialerFactory); err != nil {
 		return fmt.Errorf("[controlPlane] Failed to bring up Control Plane: %v", err)
 	}
@@ -86,6 +88,7 @@ func (c *Cluster) DeployWorkerPlane(ctx context.Context) error {
 		c.Services,
 		c.SystemImages[NginxProxyImage],
 		c.SystemImages[ServiceSidekickImage],
+		c.CloudProvider,
 		c.LocalConnDialerFactory); err != nil {
 		return fmt.Errorf("[workerPlane] Failed to bring up Worker Plane: %v", err)
 	}
@@ -140,6 +143,9 @@ func ParseCluster(
 }
 
 func (c *Cluster) setClusterDefaults(ctx context.Context) {
+	// this is a hack awaiting where to get the cloud_config setting from???
+	c.CloudProvider = "aws"
+
 	if len(c.SSHKeyPath) == 0 {
 		c.SSHKeyPath = DefaultClusterSSHKeyPath
 	}

@@ -11,9 +11,9 @@ import (
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 )
 
-func runKubeAPI(ctx context.Context, host *hosts.Host, etcdHosts []*hosts.Host, kubeAPIService v3.KubeAPIService, authorizationMode string, df hosts.DialerFactory) error {
+func runKubeAPI(ctx context.Context, host *hosts.Host, etcdHosts []*hosts.Host, kubeAPIService v3.KubeAPIService, authorizationMode string, cloudProvider string, df hosts.DialerFactory) error {
 	etcdConnString := GetEtcdConnString(etcdHosts)
-	imageCfg, hostCfg := buildKubeAPIConfig(host, kubeAPIService, etcdConnString, authorizationMode)
+	imageCfg, hostCfg := buildKubeAPIConfig(host, kubeAPIService, etcdConnString, authorizationMode, cloudProvider)
 	if err := docker.DoRunContainer(ctx, host.DClient, imageCfg, hostCfg, KubeAPIContainerName, host.Address, ControlRole); err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func removeKubeAPI(ctx context.Context, host *hosts.Host) error {
 	return docker.DoRemoveContainer(ctx, host.DClient, KubeAPIContainerName, host.Address)
 }
 
-func buildKubeAPIConfig(host *hosts.Host, kubeAPIService v3.KubeAPIService, etcdConnString, authorizationMode string) (*container.Config, *container.HostConfig) {
+func buildKubeAPIConfig(host *hosts.Host, kubeAPIService v3.KubeAPIService, etcdConnString, authorizationMode string, cloudProvider string) (*container.Config, *container.HostConfig) {
 	imageCfg := &container.Config{
 		Image: kubeAPIService.Image,
 		Entrypoint: []string{"/opt/rke/entrypoint.sh",
@@ -33,7 +33,7 @@ func buildKubeAPIConfig(host *hosts.Host, kubeAPIService v3.KubeAPIService, etcd
 			"--bind-address=0.0.0.0",
 			"--insecure-port=0",
 			"--secure-port=6443",
-			"--cloud-provider=",
+			"--cloud-provider=" + cloudProvider,
 			"--allow_privileged=true",
 			"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
 			"--service-cluster-ip-range=" + kubeAPIService.ServiceClusterIPRange,

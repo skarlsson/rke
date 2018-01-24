@@ -11,8 +11,8 @@ import (
 	"github.com/rancher/types/apis/management.cattle.io/v3"
 )
 
-func runKubelet(ctx context.Context, host *hosts.Host, kubeletService v3.KubeletService, df hosts.DialerFactory, unschedulable bool) error {
-	imageCfg, hostCfg := buildKubeletConfig(host, kubeletService, unschedulable)
+func runKubelet(ctx context.Context, host *hosts.Host, kubeletService v3.KubeletService, cloudProvider string, df hosts.DialerFactory, unschedulable bool) error {
+	imageCfg, hostCfg := buildKubeletConfig(host, kubeletService, cloudProvider, unschedulable)
 	if err := docker.DoRunContainer(ctx, host.DClient, imageCfg, hostCfg, KubeletContainerName, host.Address, WorkerRole); err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func removeKubelet(ctx context.Context, host *hosts.Host) error {
 	return docker.DoRemoveContainer(ctx, host.DClient, KubeletContainerName, host.Address)
 }
 
-func buildKubeletConfig(host *hosts.Host, kubeletService v3.KubeletService, unschedulable bool) (*container.Config, *container.HostConfig) {
+func buildKubeletConfig(host *hosts.Host, kubeletService v3.KubeletService, cloudProvider string, unschedulable bool) (*container.Config, *container.HostConfig) {
 	imageCfg := &container.Config{
 		Image: kubeletService.Image,
 		Entrypoint: []string{"/opt/rke/entrypoint.sh",
@@ -41,7 +41,7 @@ func buildKubeletConfig(host *hosts.Host, kubeletService v3.KubeletService, unsc
 			"--cni-bin-dir=/opt/cni/bin",
 			"--resolv-conf=/etc/resolv.conf",
 			"--allow-privileged=true",
-			"--cloud-provider=",
+			"--cloud-provider=" + cloudProvider,
 			"--kubeconfig=" + pki.KubeNodeConfigPath,
 			"--require-kubeconfig=True",
 		},
